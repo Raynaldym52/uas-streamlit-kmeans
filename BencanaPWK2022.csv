@@ -1,0 +1,18 @@
+id,Nama Kecamatan,pohon tumbang,angin_puting_beliung,longsor tanah,banjir,gempa,karhutla,bangunan ambruk,kekeringan,Jumlah Bencana,kecamatan_id,kelas_kerawanan,kelas_id
+1,JATILUHUR,0,2,3,2,0,1,2,0,10,6,Rawan,3
+2,SUKASARI,1,1,2,0,0,0,0,0,4,13,Sedang,2
+3,MANIIS,0,1,3,1,0,0,1,0,6,8,Sedang,2
+4,TEGAL WARU,0,1,6,0,0,1,0,0,8,15,Sedang,2
+5,PLERED,0,2,0,1,1,0,3,0,7,10,Sedang,2
+6,SUKATANI,2,2,9,1,2,1,2,0,19,14,Rawan,3
+7,DARANGDAN,0,0,13,2,0,0,7,0,22,5,Sangat Rawan,4
+8,BOJONG,1,1,24,0,1,0,5,0,32,1,Sangat Rawan,4
+9,WANAYASA,2,1,5,1,0,0,2,0,11,16,Rawan,3
+10,KIARAPEDES,2,1,1,0,0,0,3,0,7,7,Sedang,2
+11,PASAWAHAN,2,5,6,1,0,2,4,0,20,9,Sangat Rawan,4
+12,PONDOK SALAM,0,0,7,1,0,1,4,0,13,11,Rawan,3
+13,PURWAKARTA,9,4,5,5,0,5,2,0,30,12,Sangat Rawan,4
+14,BABAKANCIKAO,3,2,0,6,0,1,0,0,12,0,Rawan,3
+15,CAMPAKA,0,0,0,0,0,0,0,0,0,3,Rendah,1
+16,CIBATU,0,3,1,0,0,0,0,0,4,4,Sedang,2
+17,BUNGURSARI,2,1,1,0,0,10,0,0,14,2,Rawan,3
