@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
-import joblib
 import matplotlib.pyplot as plt
-import seaborn as sns
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
 
 # ===============================
 # Konfigurasi Halaman
@@ -13,31 +13,21 @@ st.set_page_config(
 )
 
 # ===============================
-# Load Data & Model
+# Load Data
 # ===============================
 @st.cache_data
 def load_data():
     return pd.read_csv("BencanaPWK2022.csv")
 
-@st.cache_resource
-def load_model():
-    model = joblib.load("kmeans_model.pkl")
-    scaler = joblib.load("scaler.pkl")
-    return model, scaler
-
 df = load_data()
-kmeans_model, scaler = load_model()
 
 # ===============================
 # Judul
 # ===============================
 st.title("📊 Aplikasi Clustering Data Bencana (K-Means)")
 st.write(
-    """
-    Aplikasi ini merupakan implementasi **K-Means Clustering**
-    untuk mengelompokkan data bencana menggunakan model yang
-    telah dilatih sebelumnya.
-    """
+    "Aplikasi ini melakukan **clustering K-Means langsung dari dataset** "
+    "tanpa menggunakan model eksternal."
 )
 
 # ===============================
@@ -66,43 +56,68 @@ elif menu == "Statistik":
     st.write(df.describe())
 
 # ===============================
-# Menu Clustering
+# Menu Clustering (PASTI JALAN)
 # ===============================
 elif menu == "Clustering":
     st.subheader("🔍 Hasil Clustering K-Means")
 
-    # Ambil kolom numerik
-    numeric_cols = df.select_dtypes(include=["int64", "float64"]).columns
+    # Fitur numerik sesuai CSV
+    fitur = [
+        "pohon tumbang",
+        "banjir",
+        "longsor tanah",
+        "Jumlah Bencana"
+    ]
 
-    st.write("Kolom numerik yang digunakan:")
-    st.write(list(numeric_cols))
+    st.write("Fitur yang digunakan:")
+    st.write(fitur)
+
+    # Validasi kolom
+    missing = [f for f in fitur if f not in df.columns]
+    if missing:
+        st.error(f"Kolom tidak ditemukan: {missing}")
+        st.stop()
+
+    # Ambil & bersihkan data
+    X = df[fitur]
+    X = X.apply(pd.to_numeric, errors="coerce")
+    X = X.fillna(0)
+
+    # Input jumlah cluster
+    k = st.slider("Jumlah Cluster (K)", 2, 5, 3)
 
     # Scaling
-    X = df[numeric_cols]
-    X_scaled = scaler.transform(X)
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
 
-    # Prediksi cluster
-    cluster_result = kmeans_model.predict(X_scaled)
-    df["Cluster"] = cluster_result
+    # KMeans
+    kmeans = KMeans(n_clusters=k, random_state=42)
+    df["Cluster"] = kmeans.fit_predict(X_scaled)
 
     st.subheader("📌 Data dengan Label Cluster")
     st.dataframe(df)
 
-    # Visualisasi
-    if len(numeric_cols) >= 2:
-        x_axis = st.selectbox("Pilih Sumbu X", numeric_cols)
-        y_axis = st.selectbox("Pilih Sumbu Y", numeric_cols)
+    # ===============================
+    # Visualisasi (AMAN)
+    # ===============================
+    x_axis = st.selectbox("Pilih Sumbu X", fitur)
+    y_axis = st.selectbox("Pilih Sumbu Y", fitur)
 
-        fig, ax = plt.subplots()
-        sns.scatterplot(
-            x=df[x_axis],
-            y=df[y_axis],
-            hue=df["Cluster"],
-            palette="Set1",
-            ax=ax
-        )
+    fig, ax = plt.subplots()
+    scatter = ax.scatter(
+        df[x_axis],
+        df[y_axis],
+        c=df["Cluster"]
+    )
 
-        ax.set_title("Visualisasi Clustering K-Means")
-        st.pyplot(fig)
-    else:
-        st.warning("Minimal dibutuhkan 2 kolom numerik untuk visualisasi.")
+    ax.set_xlabel(x_axis)
+    ax.set_ylabel(y_axis)
+    ax.set_title("Visualisasi Hasil Clustering K-Means")
+
+    legend = ax.legend(
+        *scatter.legend_elements(),
+        title="Cluster"
+    )
+    ax.add_artist(legend)
+
+    st.pyplot(fig)
