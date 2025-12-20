@@ -22,16 +22,33 @@ st.write("Aplikasi ini digunakan untuk menampilkan dan menganalisis data bencana
 # ===============================
 @st.cache_data
 def load_data():
-    df = pd.read_csv("BencanaPWK2022.csv")
-    return df
+    return pd.read_csv("BencanaPWK2022.csv")
 
 df = load_data()
 
 # ===============================
-# Normalisasi Nama Jenis Bencana
-# (agar konsisten dengan yang diminta)
+# TAMPILKAN NAMA KOLOM (DEBUG AMAN)
 # ===============================
-df['Jenis_Bencana'] = df['Jenis_Bencana'].str.lower()
+st.sidebar.write("Kolom pada dataset:")
+st.sidebar.write(list(df.columns))
+
+# ===============================
+# PENYESUAIAN NAMA KOLOM (ANTI ERROR)
+# ===============================
+# Ganti nama kolom sesuai CSV
+if 'Jenis_Bencana' not in df.columns:
+    for col in df.columns:
+        if 'bencana' in col.lower():
+            df.rename(columns={col: 'Jenis_Bencana'}, inplace=True)
+
+if 'Wilayah' not in df.columns:
+    for col in df.columns:
+        if 'wilayah' in col.lower() or 'kabupaten' in col.lower() or 'kota' in col.lower():
+            df.rename(columns={col: 'Wilayah'}, inplace=True)
+
+# Normalisasi teks
+df['Jenis_Bencana'] = df['Jenis_Bencana'].astype(str).str.lower()
+df['Wilayah'] = df['Wilayah'].astype(str)
 
 # ===============================
 # Sidebar
@@ -47,7 +64,6 @@ menu = st.sidebar.radio(
 # ===============================
 if menu == "Dataset":
     st.subheader("📊 Dataset Bencana Alam")
-    st.write("Data bencana alam berdasarkan wilayah dan jenis bencana.")
     st.dataframe(df)
 
 # ===============================
@@ -67,10 +83,6 @@ elif menu == "Statistik":
     with col3:
         st.metric("Jumlah Wilayah", df['Wilayah'].nunique())
 
-    st.write("### Statistik Deskriptif")
-    st.write(df.describe(include='all'))
-
-    # Jumlah kejadian per jenis bencana
     st.write("### Jumlah Kejadian per Jenis Bencana")
     st.dataframe(df['Jenis_Bencana'].value_counts())
 
@@ -80,7 +92,6 @@ elif menu == "Statistik":
 elif menu == "Visualisasi":
     st.subheader("📉 Visualisasi Data Bencana")
 
-    # Daftar jenis bencana yang diminta
     daftar_bencana = [
         "pohon tumbang",
         "angin puting beliung",
@@ -91,7 +102,6 @@ elif menu == "Visualisasi":
         "kekeringan"
     ]
 
-    # Filter hanya data yang sesuai daftar
     df_visual = df[df['Jenis_Bencana'].isin(daftar_bencana)]
 
     jenis = st.selectbox(
@@ -101,15 +111,10 @@ elif menu == "Visualisasi":
 
     df_filter = df_visual[df_visual['Jenis_Bencana'] == jenis]
 
-    st.write(f"Menampilkan data untuk **{jenis.upper()}**")
-
-    # Grafik jumlah kejadian per wilayah
     fig, ax = plt.subplots(figsize=(10, 5))
-    df_filter['Wilayah'].value_counts().plot(
-        kind='bar',
-        ax=ax
-    )
-    ax.set_title(f"Jumlah Kejadian {jenis} per Wilayah")
+    df_filter['Wilayah'].value_counts().plot(kind='bar', ax=ax)
+
+    ax.set_title(f"Jumlah Kejadian {jenis}")
     ax.set_xlabel("Wilayah")
     ax.set_ylabel("Jumlah Kejadian")
     plt.xticks(rotation=45)
