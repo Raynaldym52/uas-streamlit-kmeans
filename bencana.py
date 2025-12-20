@@ -8,12 +8,12 @@ from sklearn.decomposition import PCA
 from sklearn.metrics import silhouette_score, davies_bouldin_score
 
 # ===============================
-# FONT CONFIG (DejaVu Sans)
+# FONT CONFIG
 # ===============================
 plt.rcParams["font.family"] = "DejaVu Sans"
 
 # ===============================
-# KONFIGURASI HALAMAN
+# PAGE CONFIG
 # ===============================
 st.set_page_config(
     page_title="Clustering Bencana Alam",
@@ -36,15 +36,6 @@ JENIS_BENCANA = [
 ]
 
 # ===============================
-# JUDUL
-# ===============================
-st.title("🌋 Aplikasi Clustering Bencana Alam")
-st.markdown(
-    "Aplikasi ini digunakan untuk **mengelompokkan data bencana alam** "
-    "menggunakan algoritma **K-Means Clustering**."
-)
-
-# ===============================
 # LOAD DATA & MODEL
 # ===============================
 @st.cache_data
@@ -55,10 +46,11 @@ def load_data():
 def load_model():
     model = joblib.load("kmeans_model.pkl")
     scaler = joblib.load("scaler.pkl")
-    return model, scaler
+    features = joblib.load("features.pkl")  # <<< WAJIB ADA
+    return model, scaler, features
 
 df_full = load_data()
-kmeans_model, scaler = load_model()
+kmeans_model, scaler, FEATURES = load_model()
 
 # ===============================
 # SIDEBAR
@@ -68,48 +60,42 @@ menu = st.sidebar.radio(
     ["Data", "Visualisasi Cluster", "Evaluasi Model", "Prediksi Cluster"]
 )
 
-st.sidebar.markdown("### 🔎 Filter Jenis Bencana")
-
 selected_bencana = st.sidebar.multiselect(
-    "Pilih Jenis Bencana",
+    "Filter Jenis Bencana",
     JENIS_BENCANA,
     default=JENIS_BENCANA
 )
 
 # ===============================
-# FILTER DATA (AMAN - FIX ERROR LINE 123)
+# FILTER DATA (AMAN)
 # ===============================
 if 'jenis_bencana' in df_full.columns:
     df = df_full[df_full['jenis_bencana'].isin(selected_bencana)]
 else:
     df = df_full.copy()
 
-if df.empty:
-    st.warning("⚠️ Data kosong setelah filter. Silakan pilih jenis bencana.")
+if len(df) < 2:
+    st.warning("⚠️ Data terlalu sedikit untuk clustering.")
     st.stop()
 
 # ===============================
-# MENU : DATA
+# AMBIL FITUR SESUAI TRAINING
+# ===============================
+X = df[FEATURES]
+X_scaled = scaler.transform(X)
+
+# ===============================
+# MENU DATA
 # ===============================
 if menu == "Data":
-    st.subheader("📊 Dataset Bencana")
+    st.subheader("📊 Dataset")
     st.dataframe(df, use_container_width=True)
 
-    st.subheader("📈 Statistik Deskriptif")
-    st.dataframe(df.describe(), use_container_width=True)
-
-    if 'jenis_bencana' in df.columns:
-        st.subheader("📌 Distribusi Jenis Bencana")
-        st.bar_chart(df['jenis_bencana'].value_counts())
-
 # ===============================
-# MENU : VISUALISASI
+# MENU VISUALISASI
 # ===============================
 elif menu == "Visualisasi Cluster":
-    st.subheader("📉 Visualisasi Clustering (PCA 2D)")
-
-    X = df.select_dtypes(include=["int64", "float64"])
-    X_scaled = scaler.transform(X)
+    st.subheader("📉 Visualisasi PCA")
 
     pca = PCA(n_components=2)
     pca_result = pca.fit_transform(X_scaled)
@@ -130,59 +116,48 @@ elif menu == "Visualisasi Cluster":
         s=80,
         ax=ax
     )
-
-    ax.set_title("Visualisasi Cluster Data Bencana", fontsize=14)
-    ax.set_xlabel("Principal Component 1")
-    ax.set_ylabel("Principal Component 2")
-
     st.pyplot(fig)
 
 # ===============================
-# MENU : EVALUASI
+# MENU EVALUASI
 # ===============================
 elif menu == "Evaluasi Model":
-    st.subheader("📊 Evaluasi Model K-Means")
+    st.subheader("📊 Evaluasi K-Means")
 
-    X = df.select_dtypes(include=["int64", "float64"])
-    X_scaled = scaler.transform(X)
+    labels = kmeans_model.predict(X_scaled)
 
-    sil = silhouette_score(X_scaled, kmeans_model.predict(X_scaled))
-    dbi = davies_bouldin_score(X_scaled, kmeans_model.predict(X_scaled))
+    if len(set(labels)) > 1:
+        sil = silhouette_score(X_scaled, labels)
+        dbi = davies_bouldin_score(X_scaled, labels)
 
-    col1, col2 = st.columns(2)
-    col1.metric("Silhouette Score", f"{sil:.3f}")
-    col2.metric("Davies-Bouldin Index", f"{dbi:.3f}")
+        st.metric("Silhouette Score", f"{sil:.3f}")
+        st.metric("Davies-Bouldin Index", f"{dbi:.3f}")
+    else:
+        st.warning("Silhouette Score tidak dapat dihitung (1 cluster).")
 
 # ===============================
-# MENU : PREDIKSI
+# MENU PREDIKSI
 # ===============================
 elif menu == "Prediksi Cluster":
-    st.subheader("🔍 Prediksi Cluster Data Baru")
+    st.subheader("🔍 Prediksi Cluster")
 
-    jenis_input = st.selectbox(
-        "Pilih Jenis Bencana",
-        JENIS_BENCANA
-    )
+    jenis = st.selectbox("Jenis Bencana", JENIS_BENCANA)
 
-    numeric_cols = df.select_dtypes(include=["int64", "float64"]).columns
-    input_data = []
-
-    for col in numeric_cols:
-        input_data.append(
-            st.number_input(
-                f"Masukkan nilai {col}",
-                value=float(df[col].mean())
-            )
+    input_data = {}
+    for col in FEATURES:
+        input_data[col] = st.number_input(
+            f"Masukkan nilai {col}",
+            value=float(df[col].mean())
         )
 
-    if st.button("Prediksi Cluster"):
-        new_df = pd.DataFrame([input_data], columns=numeric_cols)
+    if st.button("Prediksi"):
+        new_df = pd.DataFrame([input_data])[FEATURES]
         new_scaled = scaler.transform(new_df)
         cluster = kmeans_model.predict(new_scaled)[0]
 
         st.success(
             f"""
-            **Jenis Bencana:** {jenis_input}  
+            **Jenis Bencana:** {jenis}  
             **Hasil Cluster:** Cluster {cluster}
             """
         )
